@@ -18,6 +18,35 @@
         </p>
       </div>
 
+      <div class="mb-6 rounded-3xl border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/60">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-slate-800">部署状态</p>
+            <p class="mt-1 text-xs leading-5 text-slate-500">
+              这里会显示本地保存、GitHub 推送和 GitHub Pages 最新部署结果。
+            </p>
+          </div>
+          <span id="deployBadge" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+            检查中
+          </span>
+        </div>
+
+        <div class="mt-4 space-y-2 text-sm text-slate-700">
+          <p><span class="font-semibold">本地提交：</span><span id="localCommitText">-</span></p>
+          <p><span class="font-semibold">Pages 结果：</span><span id="workflowStatusText">-</span></p>
+          <p><span class="font-semibold">最新更新时间：</span><span id="workflowUpdatedText">-</span></p>
+        </div>
+
+        <div class="mt-4 flex gap-3">
+          <a id="pagesLink" href="/" target="_blank" rel="noreferrer" class="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800">
+            打开线上前台
+          </a>
+          <button id="refreshDeployButton" type="button" class="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+            刷新状态
+          </button>
+        </div>
+      </div>
+
       <form id="configForm" class="rounded-3xl border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/70" novalidate>
         <div>
           <label for="whatsappNumber" class="block text-sm font-semibold text-slate-800">
@@ -115,8 +144,18 @@
     const facebookPixelIdInput = document.getElementById("facebookPixelId");
     const statusMessage = document.getElementById("statusMessage");
     const saveButton = document.getElementById("saveButton");
+    const deployBadge = document.getElementById("deployBadge");
+    const localCommitText = document.getElementById("localCommitText");
+    const workflowStatusText = document.getElementById("workflowStatusText");
+    const workflowUpdatedText = document.getElementById("workflowUpdatedText");
+    const pagesLink = document.getElementById("pagesLink");
+    const refreshDeployButton = document.getElementById("refreshDeployButton");
 
     loadConfig();
+    loadDeployStatus();
+    setInterval(loadDeployStatus, 30000);
+
+    refreshDeployButton.addEventListener("click", loadDeployStatus);
 
     whatsappNumberInput.addEventListener("input", function () {
       this.value = this.value.replace(/[^\d+\s()-]/g, "").slice(0, 30);
@@ -185,6 +224,7 @@
         facebookPixelIdInput.value = savedConfig.facebookPixelId;
         adminPasswordInput.value = "";
         showStatus("配置已保存。刷新前台页面即可看到新配置。", "success");
+        await loadDeployStatus();
       } catch (error) {
         showStatus("保存失败，请检查密码是否正确，或确认本地服务是否正常运行。", "error");
       } finally {
@@ -207,6 +247,50 @@
         facebookPixelIdInput.value = config.facebookPixelId || "";
       } catch (error) {
         showStatus("读取配置失败，请确认后端服务已启动。", "error");
+      }
+    }
+
+    async function loadDeployStatus() {
+      try {
+        const response = await fetch("/api/deploy-status", { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error("读取部署状态失败");
+        }
+
+        const status = await response.json();
+        pagesLink.href = status.pagesUrl || "/";
+        localCommitText.textContent = status.localCommitMessage
+          ? `${status.localCommitMessage} (${String(status.localHead || "").slice(0, 7)})`
+          : "-";
+
+        const workflowRun = status.workflowRun || {};
+        if (workflowRun.error) {
+          deployBadge.textContent = "未知";
+          deployBadge.className = "rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700";
+          workflowStatusText.textContent = workflowRun.error;
+        } else {
+          const stateLabel = workflowRun.status === "completed"
+            ? (workflowRun.conclusion === "success" ? "部署成功" : `已完成：${workflowRun.conclusion || "unknown"}`)
+            : `部署中：${workflowRun.status}`;
+
+          deployBadge.textContent = workflowRun.status === "completed" && workflowRun.conclusion === "success" ? "成功" : "进行中";
+          deployBadge.className = workflowRun.status === "completed" && workflowRun.conclusion === "success"
+            ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700"
+            : "rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700";
+
+          workflowStatusText.textContent = `${stateLabel}${workflowRun.htmlUrl ? " · " : ""}`;
+          if (workflowRun.htmlUrl) {
+            workflowStatusText.innerHTML = `${stateLabel} · <a href="${workflowRun.htmlUrl}" target="_blank" rel="noreferrer" class="font-semibold text-emerald-700 underline">查看 GitHub Actions</a>`;
+          }
+
+          workflowUpdatedText.textContent = workflowRun.updatedAt || "-";
+        }
+      } catch (error) {
+        deployBadge.textContent = "离线";
+        deployBadge.className = "rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700";
+        workflowStatusText.textContent = "无法读取部署状态";
+        workflowUpdatedText.textContent = "-";
       }
     }
 
