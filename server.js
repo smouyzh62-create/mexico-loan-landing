@@ -33,6 +33,10 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, await readConfig());
     }
 
+    if (url.pathname === "/config.js" && request.method === "GET") {
+      return sendText(response, 200, `window.SITE_CONFIG = ${JSON.stringify(await readConfig(), null, 2)};\n`, "application/javascript; charset=utf-8");
+    }
+
     if (url.pathname === "/api/config" && request.method === "POST") {
       const payload = await readJsonBody(request);
 
@@ -126,9 +130,9 @@ function sendJson(response, statusCode, payload) {
   response.end(JSON.stringify(payload));
 }
 
-function sendText(response, statusCode, text) {
+function sendText(response, statusCode, text, contentType = "text/plain; charset=utf-8") {
   response.writeHead(statusCode, {
-    "Content-Type": "text/plain; charset=utf-8",
+    "Content-Type": contentType,
     "Cache-Control": "no-store"
   });
   response.end(text);
