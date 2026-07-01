@@ -113,12 +113,11 @@
     </section>
   </main>
 
-  <script src="./config.js"></script>
   <script>
     const DEFAULT_CONFIG = {
-      whatsappNumber: window.SITE_CONFIG?.whatsappNumber || "5215500000000",
-      facebookPixelId: window.SITE_CONFIG?.facebookPixelId || "",
-      whatsappMessage: window.SITE_CONFIG?.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+      whatsappNumber: "5215500000000",
+      facebookPixelId: "",
+      whatsappMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
     };
 
     let landingConfig = { ...DEFAULT_CONFIG };
@@ -130,7 +129,7 @@
     const buttonText = document.getElementById("buttonText");
     const buttonSpinner = document.getElementById("buttonSpinner");
 
-    applyStaticLandingConfig();
+    loadLandingConfig();
 
     phoneInput.addEventListener("input", function () {
       this.value = this.value.replace(/\D/g, "").slice(0, 10);
@@ -167,14 +166,25 @@
       }, 1200);
     });
 
-    function applyStaticLandingConfig() {
-      landingConfig = {
-        whatsappNumber: String(DEFAULT_CONFIG.whatsappNumber || "5215500000000").replace(/\D/g, ""),
-        facebookPixelId: String(DEFAULT_CONFIG.facebookPixelId || "").replace(/\D/g, ""),
-        whatsappMessage: String(DEFAULT_CONFIG.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.")
-      };
+    async function loadLandingConfig() {
+      try {
+        const response = await fetch("/api/config", { cache: "no-store" });
 
-      installFacebookPixel(landingConfig.facebookPixelId);
+        if (!response.ok) {
+          throw new Error("Config request failed");
+        }
+
+        const config = await response.json();
+        landingConfig = {
+          whatsappNumber: String(config.whatsappNumber || DEFAULT_CONFIG.whatsappNumber).replace(/\D/g, ""),
+          facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, ""),
+          whatsappMessage: String(config.whatsappMessage || DEFAULT_CONFIG.whatsappMessage)
+        };
+
+        installFacebookPixel(landingConfig.facebookPixelId);
+      } catch (error) {
+        console.warn("Using default landing config.", error);
+      }
     }
 
     function installFacebookPixel(pixelId) {

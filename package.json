@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "sync": "node scripts/sync-pages.mjs",
+    "sync:watch": "node scripts/sync-pages.mjs --watch"
   },
   "dependencies": {}
 }
