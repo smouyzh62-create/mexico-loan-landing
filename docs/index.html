@@ -113,6 +113,7 @@
     </section>
   </main>
 
+  <script src="./config.js"></script>
   <script>
     const DEFAULT_CONFIG = {
       whatsappNumber: "5215500000000",
@@ -120,7 +121,7 @@
       whatsappMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
     };
 
-    let landingConfig = { ...DEFAULT_CONFIG };
+    let landingConfig = normalizeConfig(window.SITE_CONFIG || DEFAULT_CONFIG);
 
     const form = document.getElementById("loanForm");
     const phoneInput = document.getElementById("phone");
@@ -129,7 +130,7 @@
     const buttonText = document.getElementById("buttonText");
     const buttonSpinner = document.getElementById("buttonSpinner");
 
-    loadLandingConfig();
+    installFacebookPixel(landingConfig.facebookPixelId);
 
     phoneInput.addEventListener("input", function () {
       this.value = this.value.replace(/\D/g, "").slice(0, 10);
@@ -166,25 +167,12 @@
       }, 1200);
     });
 
-    async function loadLandingConfig() {
-      try {
-        const response = await fetch("/api/config", { cache: "no-store" });
-
-        if (!response.ok) {
-          throw new Error("Config request failed");
-        }
-
-        const config = await response.json();
-        landingConfig = {
-          whatsappNumber: String(config.whatsappNumber || DEFAULT_CONFIG.whatsappNumber).replace(/\D/g, ""),
-          facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, ""),
-          whatsappMessage: String(config.whatsappMessage || DEFAULT_CONFIG.whatsappMessage)
-        };
-
-        installFacebookPixel(landingConfig.facebookPixelId);
-      } catch (error) {
-        console.warn("Using default landing config.", error);
-      }
+    function normalizeConfig(config) {
+      return {
+        whatsappNumber: String(config.whatsappNumber || DEFAULT_CONFIG.whatsappNumber).replace(/\D/g, "").slice(0, 20),
+        facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, "").slice(0, 30),
+        whatsappMessage: String(config.whatsappMessage || DEFAULT_CONFIG.whatsappMessage)
+      };
     }
 
     function installFacebookPixel(pixelId) {
