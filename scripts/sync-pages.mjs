@@ -8,8 +8,10 @@ import { execFileSync } from "node:child_process";
 const ROOT_DIR = process.cwd();
 const DOCS_DIR = path.join(ROOT_DIR, "docs");
 const INDEX_SOURCE = path.join(ROOT_DIR, "index.html");
+const ADMIN_SOURCE = path.join(ROOT_DIR, "admin.html");
 const CONFIG_SOURCE = path.join(ROOT_DIR, "config.json");
 const INDEX_TARGET = path.join(DOCS_DIR, "index.html");
+const ADMIN_TARGET = path.join(DOCS_DIR, "admin.html");
 const CONFIG_TARGET = path.join(DOCS_DIR, "config.js");
 const IGNORED_PREFIXES = ["docs/", ".git/", "node_modules/"];
 const WATCH_EXTENSIONS = new Set([".html", ".json", ".js"]);
@@ -89,6 +91,9 @@ async function syncOnce() {
     `<script src="./config.js?v=${buildStamp}"></script>`
   );
   await fs.writeFile(INDEX_TARGET, versionedIndexHtml, "utf8");
+
+  const adminHtml = await fs.readFile(ADMIN_SOURCE, "utf8");
+  await fs.writeFile(ADMIN_TARGET, adminHtml, "utf8");
 
   const config = JSON.parse(await fs.readFile(CONFIG_SOURCE, "utf8"));
   const normalizedConfig = {
