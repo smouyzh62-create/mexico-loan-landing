@@ -7,6 +7,9 @@ const PORT = Number(process.env.PORT || 5173);
 const ROOT_DIR = __dirname;
 const CONFIG_PATH = path.join(ROOT_DIR, "config.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123456";
+const GITHUB_OWNER = process.env.GITHUB_OWNER || "smouyzh62-create";
+const GITHUB_REPO = process.env.GITHUB_REPO || "mexico-loan-landing";
+const GITHUB_WORKFLOW = process.env.GITHUB_WORKFLOW || "pages.yml";
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -32,6 +35,10 @@ const server = http.createServer(async (request, response) => {
 
     if (url.pathname === "/api/config" && request.method === "GET") {
       return sendJson(response, 200, await readConfig());
+    }
+
+    if (url.pathname === "/api/deploy-status" && request.method === "GET") {
+      return sendJson(response, 200, await readDeployStatus());
     }
 
     if (url.pathname === "/config.js" && (request.method === "GET" || request.method === "HEAD")) {
@@ -85,6 +92,60 @@ async function readConfig() {
     await fs.writeFile(CONFIG_PATH, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`, "utf8");
     return DEFAULT_CONFIG;
   }
+}
+
+async function readDeployStatus() {
+  const localHead = runGit(["rev-parse", "HEAD"]).trim();
+  const localCommitMessage = runGit(["log", "-1", "--pretty=%s"]).trim();
+  const branchStatus = runGit(["status", "--short", "--branch"]).trim();
+  const workflowRun = await readLatestWorkflowRun();
+
+  return {
+    localHead,
+    localCommitMessage,
+    branchStatus,
+    workflowRun,
+    pagesUrl: `https://${GITHUB_OWNER}.github.io/${GITHUB_REPO}/`
+  };
+}
+
+async function readLatestWorkflowRun() {
+  try {
+    const endpoint = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${GITHUB_WORKFLOW}/runs?per_page=1`;
+    const response = await fetch(endpoint, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
+
+    if (!response.ok) {
+      return { error: `GitHub API ${response.status}` };
+    }
+
+    const payload = await response.json();
+    const run = payload.workflow_runs?.[0];
+
+    if (!run) {
+      return { error: "No workflow runs found" };
+    }
+
+    return {
+      id: run.id,
+      status: run.status,
+      conclusion: run.conclusion,
+      htmlUrl: run.html_url,
+      headSha: run.head_sha,
+      displayTitle: run.display_title,
+      updatedAt: run.updated_at
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+function runGit(args) {
+  return execFileSync("git", args, { cwd: ROOT_DIR, encoding: "utf8" });
 }
 
 function sanitizeConfig(config) {

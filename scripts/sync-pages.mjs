@@ -83,7 +83,12 @@ async function syncOnce() {
   await fs.mkdir(DOCS_DIR, { recursive: true });
 
   const indexHtml = await fs.readFile(INDEX_SOURCE, "utf8");
-  await fs.writeFile(INDEX_TARGET, indexHtml, "utf8");
+  const buildStamp = Date.now().toString(36);
+  const versionedIndexHtml = indexHtml.replace(
+    '<script src="./config.js"></script>',
+    `<script src="./config.js?v=${buildStamp}"></script>`
+  );
+  await fs.writeFile(INDEX_TARGET, versionedIndexHtml, "utf8");
 
   const config = JSON.parse(await fs.readFile(CONFIG_SOURCE, "utf8"));
   const normalizedConfig = {
