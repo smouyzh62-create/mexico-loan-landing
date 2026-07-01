@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Préstamos Regulares en Línea</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-top-color: #ffffff;
+      border-radius: 9999px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-[#F9FAFB] text-slate-900 antialiased">
+  <main class="min-h-screen flex items-center justify-center px-4 py-8">
+    <section class="w-full max-w-[480px]">
+      <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-100 overflow-hidden">
+        <div class="px-6 pt-8 pb-6 text-center">
+          <div class="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-50 to-blue-50 shadow-inner shadow-emerald-100/70">
+            <svg class="h-16 w-16" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+              <circle cx="48" cy="48" r="42" fill="white" />
+              <circle cx="48" cy="48" r="41" stroke="#D1FAE5" stroke-width="2" />
+              <path d="M48 25V72" stroke="#047857" stroke-width="5" stroke-linecap="round" />
+              <path d="M30 35H66" stroke="#047857" stroke-width="5" stroke-linecap="round" />
+              <path d="M48 28L32 35L20 35" stroke="#047857" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M48 28L64 35L76 35" stroke="#047857" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M24 42L16 58H32L24 42Z" fill="#DBEAFE" stroke="#2563EB" stroke-width="3" stroke-linejoin="round" />
+              <path d="M72 42L64 58H80L72 42Z" fill="#D1FAE5" stroke="#059669" stroke-width="3" stroke-linejoin="round" />
+              <path d="M31 69H65" stroke="#047857" stroke-width="5" stroke-linecap="round" />
+              <path d="M39 78H57" stroke="#047857" stroke-width="5" stroke-linecap="round" />
+              <circle cx="48" cy="35" r="5" fill="#10B981" stroke="white" stroke-width="2" />
+              <path d="M47 54C43.2 54 40.5 51.7 40.5 48.6C40.5 45.5 43.2 43.2 47 43.2H51.5" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round" />
+              <path d="M49 43V40" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round" />
+              <path d="M49 57V54" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round" />
+              <path d="M49 54H44.5" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round" />
+            </svg>
+          </div>
+
+          <h1 class="text-3xl font-bold tracking-tight text-slate-950">
+            Préstamos Regulares en Línea
+          </h1>
+
+          <p class="mt-4 text-base leading-7 text-slate-600">
+            Obtenga su crédito de forma segura, con tasas bajas y sin ningún tipo de pago por adelantado.
+            <strong class="font-semibold text-emerald-700">¡100% Gratis!</strong>
+          </p>
+        </div>
+
+        <div class="mx-6 rounded-2xl bg-slate-50 border border-slate-100 p-5">
+          <ul class="space-y-3 text-sm font-medium text-slate-700">
+            <li>✅ Sin anticipos ni comisiones ocultas</li>
+            <li>✅ Depósito directo en su cuenta bancaria</li>
+            <li>✅ Proceso 100% digital y regulado</li>
+          </ul>
+        </div>
+
+        <form id="loanForm" class="px-6 pt-6 pb-8" novalidate>
+          <label for="phone" class="block text-sm font-semibold text-slate-800">
+            Ingrese su número de teléfono celular (10 dígitos):
+          </label>
+
+          <div class="mt-3">
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel"
+              maxlength="10"
+              placeholder="Ej. 5512345678"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-lg font-medium tracking-wide text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+              aria-describedby="phoneError"
+            />
+          </div>
+
+          <p id="phoneError" class="mt-2 hidden text-sm font-medium text-red-600">
+            Por favor ingrese un número celular válido de exactamente 10 dígitos.
+          </p>
+
+          <button
+            id="submitButton"
+            type="submit"
+            class="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-5 py-4 text-base font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-80"
+          >
+            <span id="buttonText">Verificar Crédito por WhatsApp</span>
+            <span id="buttonSpinner" class="spinner hidden" aria-hidden="true"></span>
+          </button>
+
+          <p class="mt-4 text-center text-xs leading-5 text-slate-500">
+            Al continuar, acepta ser contactado por WhatsApp para recibir información sobre su solicitud.
+          </p>
+        </form>
+      </div>
+
+      <p class="mt-5 text-center text-xs text-slate-400">
+        Servicio informativo. No solicitamos pagos anticipados.
+      </p>
+    </section>
+  </main>
+
+  <script src="./config.js"></script>
+  <script>
+    const DEFAULT_CONFIG = {
+      whatsappNumber: window.SITE_CONFIG?.whatsappNumber || "5215500000000",
+      facebookPixelId: window.SITE_CONFIG?.facebookPixelId || "",
+      whatsappMessage: window.SITE_CONFIG?.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+    };
+
+    let landingConfig = { ...DEFAULT_CONFIG };
+
+    const form = document.getElementById("loanForm");
+    const phoneInput = document.getElementById("phone");
+    const phoneError = document.getElementById("phoneError");
+    const submitButton = document.getElementById("submitButton");
+    const buttonText = document.getElementById("buttonText");
+    const buttonSpinner = document.getElementById("buttonSpinner");
+
+    applyStaticLandingConfig();
+
+    phoneInput.addEventListener("input", function () {
+      this.value = this.value.replace(/\D/g, "").slice(0, 10);
+
+      if (!phoneError.classList.contains("hidden") && this.value.length === 10) {
+        hideError();
+      }
+    });
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const phoneNumber = phoneInput.value.trim();
+      const isValidMexicanMobile = /^\d{10}$/.test(phoneNumber);
+
+      if (!isValidMexicanMobile) {
+        showError();
+        phoneInput.focus();
+        return;
+      }
+
+      setLoadingState(true);
+
+      setTimeout(function () {
+        const message = landingConfig.whatsappMessage.replaceAll("{phone}", phoneNumber);
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${landingConfig.whatsappNumber}?text=${encodedMessage}`;
+
+        trackConversionEvents(phoneNumber);
+
+        setTimeout(function () {
+          window.location.href = whatsappUrl;
+        }, 150);
+      }, 1200);
+    });
+
+    function applyStaticLandingConfig() {
+      landingConfig = {
+        whatsappNumber: String(DEFAULT_CONFIG.whatsappNumber || "5215500000000").replace(/\D/g, ""),
+        facebookPixelId: String(DEFAULT_CONFIG.facebookPixelId || "").replace(/\D/g, ""),
+        whatsappMessage: String(DEFAULT_CONFIG.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.")
+      };
+
+      installFacebookPixel(landingConfig.facebookPixelId);
+    }
+
+    function installFacebookPixel(pixelId) {
+      if (!pixelId || window.fbq) {
+        return;
+      }
+
+      !function(f,b,e,v,n,t,s){
+        if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)
+      }(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
+
+      fbq("init", pixelId);
+      fbq("track", "PageView");
+    }
+
+    function trackConversionEvents(phoneNumber) {
+      if (typeof fbq !== "function") {
+        return;
+      }
+
+      fbq("track", "Purchase", {
+        content_name: "WhatsApp Loan Application",
+        currency: "MXN",
+        value: 1,
+        phone_digits: phoneNumber.length
+      });
+
+      fbq("track", "Lead", {
+        content_name: "WhatsApp Loan Lead",
+        phone_digits: phoneNumber.length
+      });
+    }
+
+    function showError() {
+      phoneError.classList.remove("hidden");
+      phoneInput.classList.remove("border-slate-200", "focus:border-emerald-500", "focus:ring-emerald-100");
+      phoneInput.classList.add("border-red-400", "focus:border-red-500", "focus:ring-red-100");
+    }
+
+    function hideError() {
+      phoneError.classList.add("hidden");
+      phoneInput.classList.remove("border-red-400", "focus:border-red-500", "focus:ring-red-100");
+      phoneInput.classList.add("border-slate-200", "focus:border-emerald-500", "focus:ring-emerald-100");
+    }
+
+    function setLoadingState(isLoading) {
+      submitButton.disabled = isLoading;
+      buttonText.textContent = isLoading ? "Verificando elegibilidad..." : "Verificar Crédito por WhatsApp";
+      buttonSpinner.classList.toggle("hidden", !isLoading);
+    }
+  </script>
+</body>
+</html>
