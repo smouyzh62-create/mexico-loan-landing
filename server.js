@@ -33,7 +33,7 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, await readConfig());
     }
 
-    if (url.pathname === "/config.js" && request.method === "GET") {
+    if (url.pathname === "/config.js" && (request.method === "GET" || request.method === "HEAD")) {
       return sendText(response, 200, `window.SITE_CONFIG = ${JSON.stringify(await readConfig(), null, 2)};\n`, "application/javascript; charset=utf-8");
     }
 
