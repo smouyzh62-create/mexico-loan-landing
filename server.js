@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs/promises");
 const path = require("path");
+const { execFileSync } = require("child_process");
 
 const PORT = Number(process.env.PORT || 5173);
 const ROOT_DIR = __dirname;
@@ -46,6 +47,17 @@ const server = http.createServer(async (request, response) => {
 
       const nextConfig = sanitizeConfig(payload);
       await fs.writeFile(CONFIG_PATH, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
+
+      try {
+        execFileSync("node", [path.join(ROOT_DIR, "scripts", "sync-pages.mjs")], {
+          cwd: ROOT_DIR,
+          stdio: "inherit"
+        });
+      } catch (error) {
+        console.error("Auto-sync failed:", error.message);
+        return sendJson(response, 500, { error: "Saved locally, but auto-sync to GitHub failed" });
+      }
+
       return sendJson(response, 200, nextConfig);
     }
 
