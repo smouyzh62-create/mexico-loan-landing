@@ -252,13 +252,7 @@
 
     async function loadDeployStatus() {
       try {
-        const response = await fetch("/api/deploy-status", { cache: "no-store" });
-
-        if (!response.ok) {
-          throw new Error("读取部署状态失败");
-        }
-
-        const status = await response.json();
+        const status = await loadLocalOrRemoteStatus();
         pagesLink.href = status.pagesUrl || "/";
         localCommitText.textContent = status.localCommitMessage
           ? `${status.localCommitMessage} (${String(status.localHead || "").slice(0, 7)})`
@@ -269,29 +263,78 @@
           deployBadge.textContent = "未知";
           deployBadge.className = "rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700";
           workflowStatusText.textContent = workflowRun.error;
-        } else {
-          const stateLabel = workflowRun.status === "completed"
-            ? (workflowRun.conclusion === "success" ? "部署成功" : `已完成：${workflowRun.conclusion || "unknown"}`)
-            : `部署中：${workflowRun.status}`;
-
-          deployBadge.textContent = workflowRun.status === "completed" && workflowRun.conclusion === "success" ? "成功" : "进行中";
-          deployBadge.className = workflowRun.status === "completed" && workflowRun.conclusion === "success"
-            ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700"
-            : "rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700";
-
-          workflowStatusText.textContent = `${stateLabel}${workflowRun.htmlUrl ? " · " : ""}`;
-          if (workflowRun.htmlUrl) {
-            workflowStatusText.innerHTML = `${stateLabel} · <a href="${workflowRun.htmlUrl}" target="_blank" rel="noreferrer" class="font-semibold text-emerald-700 underline">查看 GitHub Actions</a>`;
-          }
-
-          workflowUpdatedText.textContent = workflowRun.updatedAt || "-";
+          workflowUpdatedText.textContent = "-";
+          return;
         }
+
+        const stateLabel = workflowRun.status === "completed"
+          ? (workflowRun.conclusion === "success" ? "部署成功" : `已完成：${workflowRun.conclusion || "unknown"}`)
+          : `部署中：${workflowRun.status}`;
+
+        deployBadge.textContent = workflowRun.status === "completed" && workflowRun.conclusion === "success" ? "成功" : "进行中";
+        deployBadge.className = workflowRun.status === "completed" && workflowRun.conclusion === "success"
+          ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700"
+          : "rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700";
+
+        workflowStatusText.textContent = `${stateLabel}${workflowRun.htmlUrl ? " · " : ""}`;
+        if (workflowRun.htmlUrl) {
+          workflowStatusText.innerHTML = `${stateLabel} · <a href="${workflowRun.htmlUrl}" target="_blank" rel="noreferrer" class="font-semibold text-emerald-700 underline">查看 GitHub Actions</a>`;
+        }
+
+        workflowUpdatedText.textContent = workflowRun.updatedAt || "-";
       } catch (error) {
         deployBadge.textContent = "离线";
         deployBadge.className = "rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700";
         workflowStatusText.textContent = "无法读取部署状态";
         workflowUpdatedText.textContent = "-";
       }
+    }
+
+    async function loadLocalOrRemoteStatus() {
+      try {
+        const localResponse = await fetch("/api/deploy-status", { cache: "no-store" });
+
+        if (localResponse.ok) {
+          return await localResponse.json();
+        }
+      } catch (error) {
+        // Fall through to remote status.
+      }
+
+      const remoteResponse = await fetch(
+        "https://api.github.com/repos/smouyzh62-create/mexico-loan-landing/actions/workflows/pages.yml/runs?per_page=1",
+        {
+          cache: "no-store",
+          headers: {
+            Accept: "application/vnd.github+json"
+          }
+        }
+      );
+
+      if (!remoteResponse.ok) {
+        throw new Error("读取部署状态失败");
+      }
+
+      const payload = await remoteResponse.json();
+      const workflowRun = payload.workflow_runs?.[0];
+
+      return {
+        localHead: window.SITE_CONFIG?.lastSyncCommit || "",
+        localCommitMessage: "GitHub Pages 远程状态",
+        branchStatus: "",
+        workflowRun: workflowRun
+          ? {
+              id: workflowRun.id,
+              status: workflowRun.status,
+              conclusion: workflowRun.conclusion,
+              htmlUrl: workflowRun.html_url,
+              headSha: workflowRun.head_sha,
+              displayTitle: workflowRun.display_title,
+              updatedAt: workflowRun.updated_at
+            }
+          : { error: "No workflow runs found" },
+        pagesUrl: "https://smouyzh62-create.github.io/mexico-loan-landing/"
+      };
     }
 
     function showStatus(message, type) {
