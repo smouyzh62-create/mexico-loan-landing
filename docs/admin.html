@@ -201,6 +201,11 @@
       saveButton.textContent = "保存中...";
 
       try {
+        if (isGithubPagesHost()) {
+          showStatus("当前页面是 GitHub Pages 静态版，无法直接保存配置。请使用本地后台或部署 Node 服务。", "error");
+          return;
+        }
+
         const response = await fetch("/api/config", {
           method: "POST",
           headers: {
@@ -235,19 +240,49 @@
 
     async function loadConfig() {
       try {
-        const response = await fetch("/api/config", { cache: "no-store" });
-
-        if (!response.ok) {
-          throw new Error("读取失败");
-        }
-
-        const config = await response.json();
+        const config = await loadConfigFromLocalOrRemote();
         whatsappNumberInput.value = config.whatsappNumber || "";
         whatsappMessageInput.value = config.whatsappMessage || "";
         facebookPixelIdInput.value = config.facebookPixelId || "";
+        showStatus(isGithubPagesHost() ? "当前是线上只读后台，配置已从 GitHub Pages 读取。" : "配置已加载。", "success");
       } catch (error) {
         showStatus("读取配置失败，请确认后端服务已启动。", "error");
       }
+    }
+
+    async function loadConfigFromLocalOrRemote() {
+      try {
+        const localResponse = await fetch("/api/config", { cache: "no-store" });
+
+        if (localResponse.ok) {
+          return await localResponse.json();
+        }
+      } catch (error) {
+        // Fall through to remote/static config.
+      }
+
+      if (window.SITE_CONFIG) {
+        return window.SITE_CONFIG;
+      }
+
+      const remoteResponse = await fetch("./config.js?v=" + Date.now(), { cache: "no-store" });
+
+      if (!remoteResponse.ok) {
+        throw new Error("读取失败");
+      }
+
+      const scriptText = await remoteResponse.text();
+      const match = scriptText.match(/window\.SITE_CONFIG\s*=\s*(\{[\s\S]*\});?/);
+
+      if (!match) {
+        throw new Error("读取失败");
+      }
+
+      return Function(`return (${match[1]});`)();
+    }
+
+    function isGithubPagesHost() {
+      return location.hostname.endsWith("github.io");
     }
 
     async function loadDeployStatus() {
