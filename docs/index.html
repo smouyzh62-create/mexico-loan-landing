@@ -235,11 +235,13 @@
     }
 
     function buildTelegramUrl(recipient, encodedMessage) {
-      if (String(recipient).startsWith("+")) {
-        return `https://t.me/${recipient}?text=${encodedMessage}`;
+      const normalizedRecipient = String(recipient || "").trim();
+
+      if (/^\d+$/.test(normalizedRecipient)) {
+        return `https://t.me/+${normalizedRecipient}?text=${encodedMessage}`;
       }
 
-      return `https://t.me/${recipient}?text=${encodedMessage}`;
+      return `https://t.me/${normalizedRecipient}?text=${encodedMessage}`;
     }
 
     function installFacebookPixel(pixelId) {
