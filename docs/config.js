@@ -1,5 +1,7 @@
 window.SITE_CONFIG = {
-  "whatsappNumber": "5215500000000",
+  "telegramIds": [
+    "65433788864"
+  ],
   "facebookPixelId": "22222121212",
-  "whatsappMessage": "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+  "telegramMessage": "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
 };
