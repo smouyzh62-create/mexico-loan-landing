@@ -248,9 +248,13 @@
     async function loadConfig() {
       try {
         const config = await loadConfigFromLocalOrRemote();
-        const telegramIds = Array.isArray(config.telegramIds)
+        const telegramIds = Array.isArray(config.telegramIds) && config.telegramIds.length
           ? config.telegramIds
-          : String(config.whatsappNumber || config.telegramIds || "")
+          : String(
+              typeof config.telegramIds === "string" && config.telegramIds.trim()
+                ? config.telegramIds
+                : config.whatsappNumber || ""
+            )
               .split(/[\n,]+/)
               .map((value) => value.trim())
               .filter(Boolean);
