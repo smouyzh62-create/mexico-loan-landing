@@ -115,9 +115,9 @@
   <script src="./config.js"></script>
   <script>
     const DEFAULT_CONFIG = {
-      whatsappNumber: "5215500000000",
+      telegramIds: [],
       facebookPixelId: "",
-      whatsappMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+      telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
     };
 
     let landingConfig = normalizeConfig(window.SITE_CONFIG || DEFAULT_CONFIG);
@@ -154,11 +154,15 @@
       setLoadingState(true);
 
       setTimeout(function () {
-        const message = landingConfig.whatsappMessage.replaceAll("{phone}", phoneNumber);
+        const recipients = landingConfig.telegramIds;
+        const recipient = getNextTelegramRecipient(recipients);
+        const message = landingConfig.telegramMessage.replaceAll("{phone}", phoneNumber);
         const encodedMessage = encodeURIComponent(message);
-        const telegramUrl = `https://t.me/share/url?text=${encodedMessage}`;
+        const telegramUrl = recipient
+          ? buildTelegramUrl(recipient, encodedMessage)
+          : `https://t.me/share/url?text=${encodedMessage}`;
 
-        trackConversionEvents(phoneNumber);
+        trackConversionEvents(phoneNumber, recipient);
 
         setTimeout(function () {
           window.location.href = telegramUrl;
@@ -168,10 +172,74 @@
 
     function normalizeConfig(config) {
       return {
-        whatsappNumber: String(config.whatsappNumber || DEFAULT_CONFIG.whatsappNumber).replace(/\D/g, "").slice(0, 20),
+        telegramIds: normalizeTelegramIds(config.telegramIds || config.whatsappNumber || DEFAULT_CONFIG.telegramIds),
         facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, "").slice(0, 30),
-        whatsappMessage: String(config.whatsappMessage || DEFAULT_CONFIG.whatsappMessage)
+        telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage)
       };
+    }
+
+    function normalizeTelegramIds(source) {
+      const values = Array.isArray(source)
+        ? source
+        : String(source || "")
+            .split(/[\n,]+/)
+            .map((value) => value.trim())
+            .filter(Boolean);
+
+      return values.map((value) => normalizeTelegramId(value)).filter(Boolean);
+    }
+
+    function normalizeTelegramId(rawValue) {
+      const value = String(rawValue || "").trim();
+
+      if (!value) {
+        return "";
+      }
+
+      const tmeMatch = value.match(/^(?:https?:\/\/)?t\.me\/(.+)$/i);
+      if (tmeMatch) {
+        return normalizeTelegramId(tmeMatch[1]);
+      }
+
+      if (value.startsWith("@")) {
+        return value.slice(1).replace(/[^a-zA-Z0-9_]/g, "");
+      }
+
+      if (value.startsWith("+")) {
+        const digits = value.replace(/\D/g, "");
+        return digits ? `+${digits}` : "";
+      }
+
+      if (/^\d[\d\s()-]*$/.test(value)) {
+        return value.replace(/\D/g, "");
+      }
+
+      return value.replace(/[^a-zA-Z0-9_]/g, "");
+    }
+
+    function getNextTelegramRecipient(recipients) {
+      if (!Array.isArray(recipients) || recipients.length === 0) {
+        return "";
+      }
+
+      const storageKey = "telegramRecipientRotationIndex";
+
+      try {
+        const currentIndex = Number(localStorage.getItem(storageKey) || "0");
+        const nextRecipient = recipients[currentIndex % recipients.length];
+        localStorage.setItem(storageKey, String((currentIndex + 1) % recipients.length));
+        return nextRecipient;
+      } catch (error) {
+        return recipients[0];
+      }
+    }
+
+    function buildTelegramUrl(recipient, encodedMessage) {
+      if (String(recipient).startsWith("+")) {
+        return `https://t.me/${recipient}?text=${encodedMessage}`;
+      }
+
+      return `https://t.me/${recipient}?text=${encodedMessage}`;
     }
 
     function installFacebookPixel(pixelId) {
@@ -192,7 +260,7 @@
       fbq("track", "PageView");
     }
 
-    function trackConversionEvents(phoneNumber) {
+    function trackConversionEvents(phoneNumber, recipient) {
       if (typeof fbq !== "function") {
         return;
       }
@@ -201,12 +269,14 @@
         content_name: "Telegram Loan Application",
         currency: "MXN",
         value: 1,
-        phone_digits: phoneNumber.length
+        phone_digits: phoneNumber.length,
+        telegram_recipient: recipient || ""
       });
 
       fbq("track", "Lead", {
         content_name: "Telegram Loan Lead",
-        phone_digits: phoneNumber.length
+        phone_digits: phoneNumber.length,
+        telegram_recipient: recipient || ""
       });
     }
 
@@ -224,7 +294,7 @@
 
     function setLoadingState(isLoading) {
       submitButton.disabled = isLoading;
-      buttonText.textContent = isLoading ? "Verificando elegibilidad..." : "Verificar Crédito por Telegram";
+      buttonText.textContent = isLoading ? "Verificando elegibilidad..." : "Verificar Crédito por TG";
       buttonSpinner.classList.toggle("hidden", !isLoading);
     }
   </script>
