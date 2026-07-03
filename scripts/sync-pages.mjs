@@ -10,9 +10,12 @@ const DOCS_DIR = path.join(ROOT_DIR, "docs");
 const INDEX_SOURCE = path.join(ROOT_DIR, "index.html");
 const ADMIN_SOURCE = path.join(ROOT_DIR, "admin.html");
 const CONFIG_SOURCE = path.join(ROOT_DIR, "config.json");
+const CNAME_SOURCE = path.join(ROOT_DIR, "CNAME");
 const INDEX_TARGET = path.join(DOCS_DIR, "index.html");
 const ADMIN_TARGET = path.join(DOCS_DIR, "admin.html");
 const CONFIG_TARGET = path.join(DOCS_DIR, "config.js");
+const CNAME_TARGET = path.join(DOCS_DIR, "CNAME");
+const CUSTOM_DOMAIN = "ustrade.cc";
 const IGNORED_PREFIXES = ["docs/", ".git/", "node_modules/"];
 const WATCH_EXTENSIONS = new Set([".html", ".json", ".js"]);
 
@@ -105,6 +108,10 @@ async function syncOnce() {
   const configJs = `window.SITE_CONFIG = ${JSON.stringify(normalizedConfig, null, 2)};\n`;
   await fs.writeFile(CONFIG_TARGET, configJs, "utf8");
 
+  const cnameSource = await readOptionalFile(CNAME_SOURCE);
+  const cnameContent = (cnameSource || CUSTOM_DOMAIN).trim();
+  await fs.writeFile(CNAME_TARGET, `${cnameContent}\n`, "utf8");
+
   if (!hasRepoChanges()) {
     console.log("No changes to sync.");
     return;
@@ -136,5 +143,17 @@ function hasRepoChanges() {
     return false;
   } catch {
     return true;
+  }
+}
+
+async function readOptionalFile(filePath) {
+  try {
+    return await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return "";
+    }
+
+    throw error;
   }
 }
