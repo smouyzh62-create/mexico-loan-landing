@@ -100,9 +100,9 @@ async function syncOnce() {
 
   const config = JSON.parse(await fs.readFile(CONFIG_SOURCE, "utf8"));
   const normalizedConfig = {
-    whatsappNumber: String(config.whatsappNumber || "5215500000000").replace(/\D/g, ""),
+    telegramIds: normalizeTelegramIds(config.telegramIds || config.whatsappNumber || []),
     facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, ""),
-    whatsappMessage: String(config.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.")
+    telegramMessage: String(config.telegramMessage || config.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.")
   };
 
   const configJs = `window.SITE_CONFIG = ${JSON.stringify(normalizedConfig, null, 2)};\n`;
@@ -156,4 +156,43 @@ async function readOptionalFile(filePath) {
 
     throw error;
   }
+}
+
+function normalizeTelegramIds(source) {
+  const values = Array.isArray(source)
+    ? source
+    : String(source || "")
+        .split(/[\n,]+/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+  return values.map((value) => normalizeTelegramId(value)).filter(Boolean);
+}
+
+function normalizeTelegramId(rawValue) {
+  const value = String(rawValue || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  const tmeMatch = value.match(/^(?:https?:\/\/)?t\.me\/(.+)$/i);
+  if (tmeMatch) {
+    return normalizeTelegramId(tmeMatch[1]);
+  }
+
+  if (value.startsWith("@")) {
+    return value.slice(1).replace(/[^a-zA-Z0-9_]/g, "");
+  }
+
+  if (value.startsWith("+")) {
+    const digits = value.replace(/\D/g, "");
+    return digits ? `+${digits}` : "";
+  }
+
+  if (/^\d[\d\s()-]*$/.test(value)) {
+    return value.replace(/\D/g, "");
+  }
+
+  return value.replace(/[^a-zA-Z0-9_]/g, "");
 }
