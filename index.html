@@ -117,7 +117,8 @@
     const DEFAULT_CONFIG = {
       telegramIds: [],
       facebookPixelId: "",
-      telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+      telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.",
+      apiBaseUrl: "https://api.ustrade.cc"
     };
 
     let landingConfig = normalizeConfig(window.SITE_CONFIG || DEFAULT_CONFIG);
@@ -129,46 +130,7 @@
     const buttonText = document.getElementById("buttonText");
     const buttonSpinner = document.getElementById("buttonSpinner");
 
-    installFacebookPixel(landingConfig.facebookPixelId);
-
-    phoneInput.addEventListener("input", function () {
-      this.value = this.value.replace(/\D/g, "");
-
-      if (!phoneError.classList.contains("hidden") && this.value.length > 0) {
-        hideError();
-      }
-    });
-
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-
-      const phoneNumber = phoneInput.value.trim();
-      const isValidPhoneNumber = /^\d+$/.test(phoneNumber);
-
-      if (!isValidPhoneNumber) {
-        showError();
-        phoneInput.focus();
-        return;
-      }
-
-      setLoadingState(true);
-
-      setTimeout(function () {
-        const recipients = landingConfig.telegramIds;
-        const recipient = getNextTelegramRecipient(recipients);
-        const message = landingConfig.telegramMessage.replaceAll("{phone}", phoneNumber);
-        const encodedMessage = encodeURIComponent(message);
-        const telegramUrl = recipient
-          ? buildTelegramUrl(recipient, encodedMessage)
-          : `https://t.me/share/url?text=${encodedMessage}`;
-
-        trackConversionEvents(phoneNumber, recipient);
-
-        setTimeout(function () {
-          window.location.href = telegramUrl;
-        }, 150);
-      }, 1200);
-    });
+    initLanding();
 
     function normalizeConfig(config) {
       return {
@@ -178,10 +140,73 @@
             : typeof config.telegramIds === "string" && config.telegramIds.trim()
               ? config.telegramIds
               : config.whatsappNumber || DEFAULT_CONFIG.telegramIds
-        ),
+          ),
         facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, "").slice(0, 30),
-        telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage)
+        telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage),
+        apiBaseUrl: normalizeApiBaseUrl(config.apiBaseUrl || DEFAULT_CONFIG.apiBaseUrl)
       };
+    }
+
+    async function initLanding() {
+      landingConfig = await loadLandingConfig();
+      installFacebookPixel(landingConfig.facebookPixelId);
+
+      phoneInput.addEventListener("input", function () {
+        this.value = this.value.replace(/\D/g, "");
+
+        if (!phoneError.classList.contains("hidden") && this.value.length > 0) {
+          hideError();
+        }
+      });
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const phoneNumber = phoneInput.value.trim();
+        const isValidPhoneNumber = /^\d+$/.test(phoneNumber);
+
+        if (!isValidPhoneNumber) {
+          showError();
+          phoneInput.focus();
+          return;
+        }
+
+        setLoadingState(true);
+
+        setTimeout(function () {
+          const recipients = landingConfig.telegramIds;
+          const recipient = getNextTelegramRecipient(recipients);
+          const message = landingConfig.telegramMessage.replaceAll("{phone}", phoneNumber);
+          const encodedMessage = encodeURIComponent(message);
+          const telegramUrl = recipient
+            ? buildTelegramUrl(recipient, encodedMessage)
+            : `https://t.me/share/url?text=${encodedMessage}`;
+
+          trackConversionEvents(phoneNumber, recipient);
+
+          setTimeout(function () {
+            window.location.href = telegramUrl;
+          }, 150);
+        }, 1200);
+      });
+    }
+
+    async function loadLandingConfig() {
+      const apiBaseUrl = getConfiguredApiBaseUrl();
+
+      if (apiBaseUrl) {
+        try {
+          const response = await fetch(buildApiUrl("/api/config", apiBaseUrl), { cache: "no-store" });
+
+          if (response.ok) {
+            return normalizeConfig(await response.json());
+          }
+        } catch (error) {
+          // Fall back to embedded config.
+        }
+      }
+
+      return normalizeConfig(window.SITE_CONFIG || DEFAULT_CONFIG);
     }
 
     function normalizeTelegramIds(source) {
@@ -221,6 +246,24 @@
       }
 
       return value.replace(/[^a-zA-Z0-9_]/g, "");
+    }
+
+    function normalizeApiBaseUrl(value) {
+      return String(value || "").trim().replace(/\/+$/, "");
+    }
+
+    function getConfiguredApiBaseUrl() {
+      return normalizeApiBaseUrl(window.SITE_CONFIG?.apiBaseUrl || DEFAULT_CONFIG.apiBaseUrl);
+    }
+
+    function buildApiUrl(pathname, apiBaseUrl) {
+      const base = normalizeApiBaseUrl(apiBaseUrl);
+
+      if (!base) {
+        return pathname;
+      }
+
+      return `${base}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
     }
 
     function getNextTelegramRecipient(recipients) {
