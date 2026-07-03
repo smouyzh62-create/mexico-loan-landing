@@ -241,7 +241,7 @@
           return;
         }
 
-        const response = await fetch("/api/config", {
+        const response = await fetch(buildApiUrl("/api/config", apiBaseUrl), {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
