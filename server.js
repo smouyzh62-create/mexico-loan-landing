@@ -6,6 +6,7 @@ const { execFileSync } = require("child_process");
 const PORT = Number(process.env.PORT || 5173);
 const ROOT_DIR = __dirname;
 const CONFIG_PATH = path.join(ROOT_DIR, "config.json");
+const VISITOR_STORE_PATH = path.join(ROOT_DIR, "visitors.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123456";
 const GITHUB_OWNER = process.env.GITHUB_OWNER || "smouyzh62-create";
 const GITHUB_REPO = process.env.GITHUB_REPO || "mexico-loan-landing";
@@ -29,6 +30,7 @@ const DEFAULT_CONFIG = {
   telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.",
   apiBaseUrl: "https://api-ustrade.smouyzh62.workers.dev"
 };
+const MAX_VISITOR_RECORDS = 200;
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_PAT || "";
 const WORKFLOW_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -74,6 +76,63 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, nextConfig);
     }
 
+    if (url.pathname === "/api/visitors" && request.method === "GET") {
+      const limit = clampNumber(url.searchParams.get("limit"), 1, MAX_VISITOR_RECORDS, 20);
+      const store = await readVisitorStore();
+
+      return sendJson(response, 200, {
+        totalVisits: store.totalVisits,
+        uniqueVisitors: store.items.length,
+        updatedAt: store.updatedAt,
+        items: store.items.slice(0, limit)
+      });
+    }
+
+    if (url.pathname === "/api/visitors" && request.method === "POST") {
+      const payload = await readJsonBody(request);
+      const visitorId = normalizeVisitorId(payload.visitorId);
+
+      if (!visitorId) {
+        return sendJson(response, 400, { error: "visitorId is required" });
+      }
+
+      const now = new Date().toISOString();
+      const store = await readVisitorStore();
+      const nextRecord = normalizeVisitorRecord(payload, now);
+      const existingIndex = store.items.findIndex((item) => item.visitorId === visitorId);
+
+      if (existingIndex >= 0) {
+        const existing = store.items[existingIndex];
+        store.items[existingIndex] = {
+          ...existing,
+          ...nextRecord,
+          firstSeenAt: existing.firstSeenAt || nextRecord.firstSeenAt,
+          lastSeenAt: now,
+          visitCount: Number(existing.visitCount || 1) + 1
+        };
+      } else {
+        store.items.unshift({
+          ...nextRecord,
+          firstSeenAt: now,
+          lastSeenAt: now,
+          visitCount: 1
+        });
+      }
+
+      store.totalVisits = Number(store.totalVisits || 0) + 1;
+      store.items = store.items.slice(0, MAX_VISITOR_RECORDS);
+      store.updatedAt = now;
+
+      await fs.writeFile(VISITOR_STORE_PATH, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+
+      return sendJson(response, 200, {
+        ok: true,
+        totalVisits: store.totalVisits,
+        uniqueVisitors: store.items.length,
+        item: store.items.find((item) => item.visitorId === visitorId) || null
+      });
+    }
+
     if (request.method !== "GET" && request.method !== "HEAD") {
       return sendJson(response, 405, { error: "Method not allowed" });
     }
@@ -97,6 +156,24 @@ async function readConfig() {
   } catch {
     await fs.writeFile(CONFIG_PATH, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`, "utf8");
     return DEFAULT_CONFIG;
+  }
+}
+
+async function readVisitorStore() {
+  try {
+    const file = await fs.readFile(VISITOR_STORE_PATH, "utf8");
+    const parsed = JSON.parse(file);
+    return {
+      totalVisits: Number(parsed.totalVisits || 0),
+      updatedAt: parsed.updatedAt || null,
+      items: Array.isArray(parsed.items) ? parsed.items : []
+    };
+  } catch {
+    return {
+      totalVisits: 0,
+      updatedAt: null,
+      items: []
+    };
   }
 }
 
@@ -244,6 +321,34 @@ function sanitizeConfig(config) {
     telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage).trim().slice(0, 500),
     apiBaseUrl: String(config.apiBaseUrl || DEFAULT_CONFIG.apiBaseUrl).trim().replace(/\/+$/, "")
   };
+}
+
+function normalizeVisitorId(rawValue) {
+  return String(rawValue || "").trim().slice(0, 128);
+}
+
+function normalizeVisitorRecord(payload, now) {
+  return {
+    visitorId: normalizeVisitorId(payload.visitorId),
+    pagePath: String(payload.pagePath || "/").slice(0, 200),
+    pageUrl: String(payload.pageUrl || "").slice(0, 500),
+    referrer: String(payload.referrer || "").slice(0, 500),
+    userAgent: String(payload.userAgent || "").slice(0, 300),
+    language: String(payload.language || "").slice(0, 50),
+    country: String(payload.country || "").slice(0, 20),
+    source: String(payload.source || "landing").slice(0, 40),
+    firstSeenAt: now,
+    lastSeenAt: now,
+    visitCount: 1
+  };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number.parseInt(String(value || ""), 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
 }
 
 function normalizeTelegramId(rawValue) {

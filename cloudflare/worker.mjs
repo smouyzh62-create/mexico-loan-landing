@@ -6,6 +6,8 @@ const DEFAULT_CONFIG = {
 };
 
 const CONFIG_KEY = "site-config";
+const VISITOR_KEY = "visitor-records";
+const MAX_VISITOR_RECORDS = 200;
 
 export default {
   async fetch(request, env) {
@@ -45,6 +47,62 @@ export default {
       }));
 
       return withCors(jsonResponse(nextConfig), request);
+    }
+
+    if (url.pathname === "/api/visitors" && request.method === "GET") {
+      const limit = clampNumber(url.searchParams.get("limit"), 1, MAX_VISITOR_RECORDS, 20);
+      const store = await readVisitorStore(env);
+      return withCors(jsonResponse({
+        totalVisits: store.totalVisits,
+        uniqueVisitors: store.items.length,
+        updatedAt: store.updatedAt,
+        items: store.items.slice(0, limit)
+      }), request);
+    }
+
+    if (url.pathname === "/api/visitors" && request.method === "POST") {
+      const payload = await request.json().catch(() => ({}));
+      const visitorId = normalizeVisitorId(payload.visitorId);
+
+      if (!visitorId) {
+        return withCors(jsonResponse({ error: "visitorId is required" }, 400), request);
+      }
+
+      const now = new Date().toISOString();
+      const store = await readVisitorStore(env);
+      const nextRecord = normalizeVisitorRecord(payload, now);
+      const existingIndex = store.items.findIndex((item) => item.visitorId === visitorId);
+
+      if (existingIndex >= 0) {
+        const existing = store.items[existingIndex];
+        store.items[existingIndex] = {
+          ...existing,
+          ...nextRecord,
+          firstSeenAt: existing.firstSeenAt || nextRecord.firstSeenAt,
+          lastSeenAt: now,
+          visitCount: Number(existing.visitCount || 1) + 1
+        };
+      } else {
+        store.items.unshift({
+          ...nextRecord,
+          firstSeenAt: now,
+          lastSeenAt: now,
+          visitCount: 1
+        });
+      }
+
+      store.totalVisits = Number(store.totalVisits || 0) + 1;
+      store.items = store.items.slice(0, MAX_VISITOR_RECORDS);
+      store.updatedAt = now;
+
+      await env.SITE_CONFIG_KV.put(VISITOR_KEY, JSON.stringify(store));
+
+      return withCors(jsonResponse({
+        ok: true,
+        totalVisits: store.totalVisits,
+        uniqueVisitors: store.items.length,
+        item: store.items.find((item) => item.visitorId === visitorId) || null
+      }), request);
     }
 
     if (url.pathname === "/api/deploy-status" && request.method === "GET") {
@@ -104,6 +162,32 @@ async function readStoredMetadata(env) {
   }
 }
 
+async function readVisitorStore(env) {
+  const raw = await env.SITE_CONFIG_KV.get(VISITOR_KEY, "text");
+  if (!raw) {
+    return {
+      totalVisits: 0,
+      updatedAt: null,
+      items: []
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      totalVisits: Number(parsed.totalVisits || 0),
+      updatedAt: parsed.updatedAt || null,
+      items: Array.isArray(parsed.items) ? parsed.items : []
+    };
+  } catch {
+    return {
+      totalVisits: 0,
+      updatedAt: null,
+      items: []
+    };
+  }
+}
+
 function sanitizeConfig(config) {
   const telegramIdsSource = Array.isArray(config.telegramIds) && config.telegramIds.length
     ? config.telegramIds
@@ -146,6 +230,34 @@ function normalizeTelegramId(rawValue) {
   }
 
   return value.replace(/[^a-zA-Z0-9_]/g, "");
+}
+
+function normalizeVisitorId(rawValue) {
+  return String(rawValue || "").trim().slice(0, 128);
+}
+
+function normalizeVisitorRecord(payload, now) {
+  return {
+    visitorId: normalizeVisitorId(payload.visitorId),
+    pagePath: String(payload.pagePath || "/").slice(0, 200),
+    pageUrl: String(payload.pageUrl || "").slice(0, 500),
+    referrer: String(payload.referrer || "").slice(0, 500),
+    userAgent: String(payload.userAgent || "").slice(0, 300),
+    language: String(payload.language || "").slice(0, 50),
+    country: String(payload.country || "").slice(0, 20),
+    source: String(payload.source || "landing").slice(0, 40),
+    firstSeenAt: now,
+    lastSeenAt: now,
+    visitCount: 1
+  };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number.parseInt(String(value || ""), 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
 }
 
 function jsonResponse(payload, status = 200) {
