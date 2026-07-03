@@ -1,0 +1,10 @@
+name = "mexico-loan-admin-api"
+main = "cloudflare/worker.mjs"
+compatibility_date = "2026-07-04"
+
+kv_namespaces = [
+  { binding = "SITE_CONFIG_KV", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+]
+
+[vars]
+ADMIN_PASSWORD = "change-me"
