@@ -1,0 +1,19 @@
+{
+  "totalVisits": 1,
+  "updatedAt": "2026-07-03T20:04:55.048Z",
+  "items": [
+    {
+      "visitorId": "test-visitor",
+      "pagePath": "/",
+      "pageUrl": "http://localhost:5173/",
+      "referrer": "",
+      "userAgent": "Mozilla/5.0",
+      "language": "zh-CN",
+      "country": "",
+      "source": "landing",
+      "firstSeenAt": "2026-07-03T20:04:55.048Z",
+      "lastSeenAt": "2026-07-03T20:04:55.048Z",
+      "visitCount": 1
+    }
+  ]
+}
