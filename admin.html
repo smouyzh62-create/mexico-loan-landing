@@ -226,12 +226,20 @@
     const workflowUpdatedText = document.getElementById("workflowUpdatedText");
     const pagesLink = document.getElementById("pagesLink");
     const refreshDeployButton = document.getElementById("refreshDeployButton");
+    const visitorBadge = document.getElementById("visitorBadge");
+    const visitorTotalVisits = document.getElementById("visitorTotalVisits");
+    const visitorUniqueCount = document.getElementById("visitorUniqueCount");
+    const visitorTableBody = document.getElementById("visitorTableBody");
+    const refreshVisitorsButton = document.getElementById("refreshVisitorsButton");
 
     loadConfig();
     loadDeployStatus();
+    loadVisitorRecords();
     setInterval(loadDeployStatus, 30000);
+    setInterval(loadVisitorRecords, 60000);
 
     refreshDeployButton.addEventListener("click", loadDeployStatus);
+    refreshVisitorsButton.addEventListener("click", loadVisitorRecords);
 
     apiBaseUrlInput.addEventListener("input", function () {
       this.value = this.value.replace(/\s/g, "");
@@ -493,6 +501,83 @@
       }
     }
 
+    async function loadVisitorRecords() {
+      try {
+        const records = await loadVisitorRecordsFromLocalOrRemote();
+        renderVisitorRecords(records);
+      } catch (error) {
+        visitorBadge.textContent = "离线";
+        visitorBadge.className = "rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700";
+        visitorTotalVisits.textContent = "-";
+        visitorUniqueCount.textContent = "-";
+        visitorTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="px-4 py-6 text-center text-slate-500">无法读取访客记录。</td>
+          </tr>
+        `;
+      }
+    }
+
+    async function loadVisitorRecordsFromLocalOrRemote() {
+      const apiBaseUrls = [
+        getConfiguredApiBaseUrl(),
+        "https://api-ustrade.smouyzh62.workers.dev"
+      ].filter(Boolean);
+
+      for (const apiBaseUrl of apiBaseUrls) {
+        try {
+          const remoteResponse = await fetch(buildApiUrl("/api/visitors?limit=20", apiBaseUrl), { cache: "no-store" });
+
+          if (remoteResponse.ok) {
+            return await remoteResponse.json();
+          }
+        } catch (error) {
+          // Try the next candidate.
+        }
+      }
+
+      try {
+        const localResponse = await fetch("/api/visitors?limit=20", { cache: "no-store" });
+
+        if (localResponse.ok) {
+          return await localResponse.json();
+        }
+      } catch (error) {
+        // Fall through to error state.
+      }
+
+      throw new Error("读取访客记录失败");
+    }
+
+    function renderVisitorRecords(records) {
+      const items = Array.isArray(records?.items) ? records.items : [];
+      visitorBadge.textContent = items.length ? "在线" : "空";
+      visitorBadge.className = items.length
+        ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700"
+        : "rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600";
+      visitorTotalVisits.textContent = String(records?.totalVisits ?? 0);
+      visitorUniqueCount.textContent = String(records?.uniqueVisitors ?? 0);
+
+      if (!items.length) {
+        visitorTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="px-4 py-6 text-center text-slate-500">暂无记录。</td>
+          </tr>
+        `;
+        return;
+      }
+
+      visitorTableBody.innerHTML = items.map((item) => `
+        <tr class="align-top text-slate-700">
+          <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500">${formatTime(item.firstSeenAt)}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500">${formatTime(item.lastSeenAt)}</td>
+          <td class="px-4 py-3 font-semibold text-slate-900">${escapeHtml(String(item.visitCount || 1))}</td>
+          <td class="px-4 py-3 text-xs text-slate-600">${escapeHtml(String(item.pagePath || "/"))}</td>
+          <td class="px-4 py-3 text-xs text-slate-600">${escapeHtml(String(item.referrer || "直接访问"))}</td>
+        </tr>
+      `).join("");
+    }
+
     async function loadLocalOrRemoteStatus() {
       const apiBaseUrls = [
         getConfiguredApiBaseUrl(),
@@ -564,6 +649,30 @@
         type === "success" ? "bg-emerald-50" : "bg-red-50",
         type === "success" ? "text-emerald-700" : "text-red-700"
       );
+    }
+
+    function formatTime(value) {
+      if (!value) {
+        return "-";
+      }
+
+      try {
+        return new Intl.DateTimeFormat("zh-CN", {
+          dateStyle: "short",
+          timeStyle: "short"
+        }).format(new Date(value));
+      } catch (error) {
+        return String(value);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
   </script>
 </body>
