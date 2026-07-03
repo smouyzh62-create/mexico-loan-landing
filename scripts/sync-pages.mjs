@@ -108,7 +108,8 @@ async function syncOnce() {
           : config.whatsappNumber || []
     ),
     facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, ""),
-    telegramMessage: String(config.telegramMessage || config.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.")
+    telegramMessage: String(config.telegramMessage || config.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."),
+    apiBaseUrl: String(config.apiBaseUrl || "https://api.ustrade.cc").trim().replace(/\/+$/, "")
   };
 
   const configJs = `window.SITE_CONFIG = ${JSON.stringify(normalizedConfig, null, 2)};\n`;
