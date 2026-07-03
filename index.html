@@ -172,7 +172,13 @@
 
     function normalizeConfig(config) {
       return {
-        telegramIds: normalizeTelegramIds(config.telegramIds || config.whatsappNumber || DEFAULT_CONFIG.telegramIds),
+        telegramIds: normalizeTelegramIds(
+          Array.isArray(config.telegramIds) && config.telegramIds.length
+            ? config.telegramIds
+            : typeof config.telegramIds === "string" && config.telegramIds.trim()
+              ? config.telegramIds
+              : config.whatsappNumber || DEFAULT_CONFIG.telegramIds
+        ),
         facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, "").slice(0, 30),
         telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage)
       };

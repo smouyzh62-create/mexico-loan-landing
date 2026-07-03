@@ -100,7 +100,13 @@ async function syncOnce() {
 
   const config = JSON.parse(await fs.readFile(CONFIG_SOURCE, "utf8"));
   const normalizedConfig = {
-    telegramIds: normalizeTelegramIds(config.telegramIds || config.whatsappNumber || []),
+    telegramIds: normalizeTelegramIds(
+      Array.isArray(config.telegramIds) && config.telegramIds.length
+        ? config.telegramIds
+        : typeof config.telegramIds === "string" && config.telegramIds.trim()
+          ? config.telegramIds
+          : config.whatsappNumber || []
+    ),
     facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, ""),
     telegramMessage: String(config.telegramMessage || config.whatsappMessage || "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.")
   };
