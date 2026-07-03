@@ -97,12 +97,12 @@
             type="submit"
             class="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-5 py-4 text-base font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-80"
           >
-            <span id="buttonText">Verificar Crédito por WhatsApp</span>
+            <span id="buttonText">Verificar Crédito por Telegram</span>
             <span id="buttonSpinner" class="spinner hidden" aria-hidden="true"></span>
           </button>
 
           <p class="mt-4 text-center text-xs leading-5 text-slate-500">
-            Al continuar, acepta ser contactado por WhatsApp para recibir información sobre su solicitud.
+            Al continuar, acepta ser contactado por Telegram para recibir información sobre su solicitud.
           </p>
         </form>
       </div>
@@ -157,12 +157,12 @@
       setTimeout(function () {
         const message = landingConfig.whatsappMessage.replaceAll("{phone}", phoneNumber);
         const encodedMessage = encodeURIComponent(message);
-        const whatsappUrl = `https://wa.me/${landingConfig.whatsappNumber}?text=${encodedMessage}`;
+        const telegramUrl = `https://t.me/share/url?text=${encodedMessage}`;
 
         trackConversionEvents(phoneNumber);
 
         setTimeout(function () {
-          window.location.href = whatsappUrl;
+          window.location.href = telegramUrl;
         }, 150);
       }, 1200);
     });
@@ -199,14 +199,14 @@
       }
 
       fbq("track", "Purchase", {
-        content_name: "WhatsApp Loan Application",
+        content_name: "Telegram Loan Application",
         currency: "MXN",
         value: 1,
         phone_digits: phoneNumber.length
       });
 
       fbq("track", "Lead", {
-        content_name: "WhatsApp Loan Lead",
+        content_name: "Telegram Loan Lead",
         phone_digits: phoneNumber.length
       });
     }
@@ -225,7 +225,7 @@
 
     function setLoadingState(isLoading) {
       submitButton.disabled = isLoading;
-      buttonText.textContent = isLoading ? "Verificando elegibilidad..." : "Verificar Crédito por WhatsApp";
+      buttonText.textContent = isLoading ? "Verificando elegibilidad..." : "Verificar Crédito por Telegram";
       buttonSpinner.classList.toggle("hidden", !isLoading);
     }
   </script>
