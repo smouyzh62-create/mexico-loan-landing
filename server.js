@@ -149,9 +149,13 @@ function runGit(args) {
 }
 
 function sanitizeConfig(config) {
-  const telegramIdsSource = Array.isArray(config.telegramIds)
+  const telegramIdsSource = Array.isArray(config.telegramIds) && config.telegramIds.length
     ? config.telegramIds
-    : String(config.telegramIds || config.whatsappNumber || "").split(/[\n,]+/);
+    : String(
+        typeof config.telegramIds === "string" && config.telegramIds.trim()
+          ? config.telegramIds
+          : config.whatsappNumber || ""
+      ).split(/[\n,]+/);
 
   return {
     telegramIds: telegramIdsSource
