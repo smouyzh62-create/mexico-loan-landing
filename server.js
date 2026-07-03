@@ -24,9 +24,9 @@ const MIME_TYPES = {
 };
 
 const DEFAULT_CONFIG = {
-  whatsappNumber: "5215500000000",
+  telegramIds: [],
   facebookPixelId: "",
-  whatsappMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+  telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
 };
 
 const server = http.createServer(async (request, response) => {
@@ -149,11 +149,45 @@ function runGit(args) {
 }
 
 function sanitizeConfig(config) {
+  const telegramIdsSource = Array.isArray(config.telegramIds)
+    ? config.telegramIds
+    : String(config.telegramIds || config.whatsappNumber || "").split(/[\n,]+/);
+
   return {
-    whatsappNumber: String(config.whatsappNumber || DEFAULT_CONFIG.whatsappNumber).replace(/\D/g, "").slice(0, 20),
+    telegramIds: telegramIdsSource
+      .map((value) => normalizeTelegramId(value))
+      .filter(Boolean),
     facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, "").slice(0, 30),
-    whatsappMessage: String(config.whatsappMessage || DEFAULT_CONFIG.whatsappMessage).trim().slice(0, 500)
+    telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage).trim().slice(0, 500)
   };
+}
+
+function normalizeTelegramId(rawValue) {
+  const value = String(rawValue || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  const tmeMatch = value.match(/^(?:https?:\/\/)?t\.me\/(.+)$/i);
+  if (tmeMatch) {
+    return normalizeTelegramId(tmeMatch[1]);
+  }
+
+  if (value.startsWith("@")) {
+    return value.slice(1).replace(/[^a-zA-Z0-9_]/g, "");
+  }
+
+  if (value.startsWith("+")) {
+    const digits = value.replace(/\D/g, "");
+    return digits ? `+${digits}` : "";
+  }
+
+  if (/^\d[\d\s()-]*$/.test(value)) {
+    return value.replace(/\D/g, "");
+  }
+
+  return value.replace(/[^a-zA-Z0-9_]/g, "");
 }
 
 async function readJsonBody(request) {
