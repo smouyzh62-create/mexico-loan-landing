@@ -29,6 +29,11 @@ const DEFAULT_CONFIG = {
   telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
 };
 
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_PAT || "";
+const WORKFLOW_CACHE_TTL_MS = 2 * 60 * 1000;
+let workflowRunCache = null;
+let workflowRunCacheAt = 0;
+
 const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
@@ -110,27 +115,51 @@ async function readDeployStatus() {
 }
 
 async function readLatestWorkflowRun() {
+  if (workflowRunCache && Date.now() - workflowRunCacheAt < WORKFLOW_CACHE_TTL_MS) {
+    return workflowRunCache;
+  }
+
   try {
     const endpoint = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${GITHUB_WORKFLOW}/runs?per_page=1`;
     const response = await fetch(endpoint, {
       headers: {
         Accept: "application/vnd.github+json",
         "User-Agent": "Mozilla/5.0"
+        ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {})
       }
     });
 
     if (!response.ok) {
-      return { error: `GitHub API ${response.status}` };
+      const fallback = await readLatestWorkflowRunFromHtml();
+      if (fallback) {
+        workflowRunCache = fallback;
+        workflowRunCacheAt = Date.now();
+        return fallback;
+      }
+
+      return cacheWorkflowRun({
+        error: `GitHub API ${response.status}`,
+        status: "unknown",
+        conclusion: null,
+        htmlUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`,
+        updatedAt: new Date().toISOString()
+      });
     }
 
     const payload = await response.json();
     const run = payload.workflow_runs?.[0];
 
     if (!run) {
-      return { error: "No workflow runs found" };
+      return cacheWorkflowRun({
+        error: "No workflow runs found",
+        status: "unknown",
+        conclusion: null,
+        htmlUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`,
+        updatedAt: new Date().toISOString()
+      });
     }
 
-    return {
+    return cacheWorkflowRun({
       id: run.id,
       status: run.status,
       conclusion: run.conclusion,
@@ -138,10 +167,59 @@ async function readLatestWorkflowRun() {
       headSha: run.head_sha,
       displayTitle: run.display_title,
       updatedAt: run.updated_at
-    };
+    });
   } catch (error) {
-    return { error: error.message };
+    const fallback = await readLatestWorkflowRunFromHtml();
+    if (fallback) {
+      return fallback;
+    }
+
+    return cacheWorkflowRun({
+      error: error.message,
+      status: "unknown",
+      conclusion: null,
+      htmlUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`,
+      updatedAt: new Date().toISOString()
+    });
   }
+}
+
+function cacheWorkflowRun(workflowRun) {
+  workflowRunCache = workflowRun;
+  workflowRunCacheAt = Date.now();
+  return workflowRun;
+}
+
+async function readLatestWorkflowRunFromHtml() {
+  const actionsUrl = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`;
+  const response = await fetch(actionsUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0"
+    }
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const html = await response.text();
+  const runMatch = html.match(/\/[^"']+\/actions\/runs\/(\d+)/);
+  const statusMatch = html.match(/<span class="mb-1 d-block text-small color-fg-muted">Status<\/span>\s*<span class="h4 color-fg-default">([^<]+)<\/span>/i);
+  const titleMatch = html.match(/<span class="PageHeader-parentLink-label">\s*([^<]+?)\s*<\/span>/i);
+  const statusText = String(statusMatch?.[1] || "").trim();
+  const normalizedStatus = statusText.toLowerCase();
+  const conclusion = normalizedStatus === "success" ? "success" : normalizedStatus === "failure" ? "failure" : null;
+
+  return cacheWorkflowRun({
+    id: runMatch ? Number(runMatch[1]) : undefined,
+    status: "completed",
+    conclusion,
+    htmlUrl: runMatch ? `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs/${runMatch[1]}` : actionsUrl,
+    headSha: "",
+    displayTitle: String(titleMatch?.[1] || "Latest workflow run").trim(),
+    updatedAt: new Date().toISOString(),
+    source: "html"
+  });
 }
 
 function runGit(args) {
