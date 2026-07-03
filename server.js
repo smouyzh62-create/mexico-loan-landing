@@ -26,7 +26,8 @@ const MIME_TYPES = {
 const DEFAULT_CONFIG = {
   telegramIds: [],
   facebookPixelId: "",
-  telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}."
+  telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.",
+  apiBaseUrl: "https://api.ustrade.cc"
 };
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_PAT || "";
@@ -240,7 +241,8 @@ function sanitizeConfig(config) {
       .map((value) => normalizeTelegramId(value))
       .filter(Boolean),
     facebookPixelId: String(config.facebookPixelId || "").replace(/\D/g, "").slice(0, 30),
-    telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage).trim().slice(0, 500)
+    telegramMessage: String(config.telegramMessage || config.whatsappMessage || DEFAULT_CONFIG.telegramMessage).trim().slice(0, 500),
+    apiBaseUrl: String(config.apiBaseUrl || DEFAULT_CONFIG.apiBaseUrl).trim().replace(/\/+$/, "")
   };
 }
 
