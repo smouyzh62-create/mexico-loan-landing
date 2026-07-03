@@ -1,8 +1,8 @@
 {
   "telegramIds": [
-    "xin123yu456",
-    "dai789kuan"
+    "a",
+    "b"
   ],
-  "facebookPixelId": "1503066277631942",
-  "telegramMessage": "Consultar mi límite de crédito"
+  "facebookPixelId": "123",
+  "telegramMessage": "Hi {phone}"
 }
