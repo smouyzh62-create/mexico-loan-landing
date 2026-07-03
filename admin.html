@@ -236,11 +236,6 @@
       saveButton.textContent = "保存中...";
 
       try {
-        if (isGithubPagesHost()) {
-          showStatus("当前页面是 GitHub Pages 静态版，无法直接保存配置。请使用本地后台或部署 Node 服务。", "error");
-          return;
-        }
-
         const response = await fetch(buildApiUrl("/api/config", apiBaseUrl), {
           method: "POST",
           headers: {
@@ -295,7 +290,7 @@
         telegramIdsInput.value = telegramIdsTextarea.value;
         telegramMessageInput.value = config.telegramMessage || config.whatsappMessage || "";
         facebookPixelIdInput.value = config.facebookPixelId || "";
-        showStatus(isGithubPagesHost() ? "当前是线上只读后台，配置已从 GitHub Pages 读取。" : "配置已加载。", "success");
+        showStatus("配置已加载。", "success");
       } catch (error) {
         showStatus("读取配置失败，请确认后端服务已启动。", "error");
       }
