@@ -124,7 +124,7 @@ async function readLatestWorkflowRun() {
     const response = await fetch(endpoint, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0",
         ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {})
       }
     });
