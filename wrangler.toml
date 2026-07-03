@@ -1,9 +1,9 @@
-name = "mexico-loan-admin-api"
+name = "api-ustrade"
 main = "cloudflare/worker.mjs"
 compatibility_date = "2026-07-04"
 
 kv_namespaces = [
-  { binding = "SITE_CONFIG_KV", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+  { binding = "SITE_CONFIG_KV", id = "88e3e50fcbb8405b812d122d0165ef48" }
 ]
 
 [vars]

@@ -112,13 +112,13 @@
     </section>
   </main>
 
-  <script src="./config.js?v=mr56vqts"></script>
+  <script src="./config.js"></script>
   <script>
     const DEFAULT_CONFIG = {
       telegramIds: [],
       facebookPixelId: "",
       telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.",
-      apiBaseUrl: "https://api.ustrade.cc"
+      apiBaseUrl: "https://api-ustrade.smouyzh62.workers.dev"
     };
 
     let landingConfig = normalizeConfig(window.SITE_CONFIG || DEFAULT_CONFIG);
@@ -192,9 +192,12 @@
     }
 
     async function loadLandingConfig() {
-      const apiBaseUrl = getConfiguredApiBaseUrl();
+      const apiBaseUrls = [
+        getConfiguredApiBaseUrl(),
+        DEFAULT_CONFIG.apiBaseUrl
+      ].filter(Boolean);
 
-      if (apiBaseUrl) {
+      for (const apiBaseUrl of apiBaseUrls) {
         try {
           const response = await fetch(buildApiUrl("/api/config", apiBaseUrl), { cache: "no-store" });
 
@@ -202,7 +205,7 @@
             return normalizeConfig(await response.json());
           }
         } catch (error) {
-          // Fall back to embedded config.
+          // Try the next candidate.
         }
       }
 

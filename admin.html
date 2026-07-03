@@ -57,7 +57,7 @@
             name="apiBaseUrl"
             type="url"
             inputmode="url"
-            placeholder="https://api.ustrade.cc"
+            placeholder="https://api-ustrade.smouyzh62.workers.dev"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base font-medium text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
           />
           <p class="mt-2 text-xs leading-5 text-slate-500">
@@ -297,9 +297,12 @@
     }
 
     async function loadConfigFromLocalOrRemote() {
-      const apiBaseUrl = getConfiguredApiBaseUrl();
+      const apiBaseUrls = [
+        getConfiguredApiBaseUrl(),
+        "https://api-ustrade.smouyzh62.workers.dev"
+      ].filter(Boolean);
 
-      if (apiBaseUrl) {
+      for (const apiBaseUrl of apiBaseUrls) {
         try {
           const remoteResponse = await fetch(buildApiUrl("/api/config", apiBaseUrl), { cache: "no-store" });
 
@@ -307,7 +310,7 @@
             return await remoteResponse.json();
           }
         } catch (error) {
-          // Fall through to local/static config.
+          // Try the next candidate.
         }
       }
 
@@ -439,9 +442,12 @@
     }
 
     async function loadLocalOrRemoteStatus() {
-      const apiBaseUrl = getConfiguredApiBaseUrl();
+      const apiBaseUrls = [
+        getConfiguredApiBaseUrl(),
+        "https://api-ustrade.smouyzh62.workers.dev"
+      ].filter(Boolean);
 
-      if (apiBaseUrl) {
+      for (const apiBaseUrl of apiBaseUrls) {
         try {
           const remoteResponse = await fetch(buildApiUrl("/api/deploy-status", apiBaseUrl), { cache: "no-store" });
 
@@ -449,7 +455,7 @@
             return await remoteResponse.json();
           }
         } catch (error) {
-          // Fall through to local status.
+          // Try the next candidate.
         }
       }
 

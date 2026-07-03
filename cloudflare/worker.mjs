@@ -2,7 +2,7 @@ const DEFAULT_CONFIG = {
   telegramIds: [],
   facebookPixelId: "",
   telegramMessage: "Hola, me interesa solicitar un préstamo regular sin anticipos. Mi número es {phone}.",
-  apiBaseUrl: "https://api.ustrade.cc"
+  apiBaseUrl: "https://api-ustrade.smouyzh62.workers.dev"
 };
 
 const CONFIG_KEY = "site-config";
