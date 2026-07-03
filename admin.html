@@ -162,6 +162,7 @@
 
   <script>
     const form = document.getElementById("configForm");
+    const apiBaseUrlInput = document.getElementById("apiBaseUrl");
     const telegramIdsInput = document.getElementById("telegramIds");
     const telegramIdsTextarea = document.getElementById("telegramIdsTextarea");
     const adminPasswordInput = document.getElementById("adminPassword");
@@ -182,6 +183,10 @@
 
     refreshDeployButton.addEventListener("click", loadDeployStatus);
 
+    apiBaseUrlInput.addEventListener("input", function () {
+      this.value = this.value.replace(/\s/g, "");
+    });
+
     telegramIdsTextarea.addEventListener("input", function () {
       telegramIdsInput.value = this.value;
     });
@@ -194,6 +199,7 @@
       event.preventDefault();
 
       const telegramIds = parseTelegramIds(telegramIdsTextarea.value);
+      const apiBaseUrl = normalizeApiBaseUrl(apiBaseUrlInput.value);
       const adminPassword = adminPasswordInput.value;
       const telegramMessage = telegramMessageInput.value.trim();
       const facebookPixelId = facebookPixelIdInput.value.trim();
@@ -201,6 +207,12 @@
       if (!telegramIds.length) {
         showStatus("请至少填写一个 TG ID。", "error");
         telegramIdsTextarea.focus();
+        return;
+      }
+
+      if (!apiBaseUrl) {
+        showStatus("请先填写 Cloudflare API 地址。", "error");
+        apiBaseUrlInput.focus();
         return;
       }
 
@@ -238,6 +250,7 @@
           },
           body: JSON.stringify({
             telegramIds,
+            apiBaseUrl,
             adminPassword,
             telegramMessage,
             facebookPixelId
@@ -251,6 +264,7 @@
         const savedConfig = await response.json();
         telegramIdsTextarea.value = Array.isArray(savedConfig.telegramIds) ? savedConfig.telegramIds.join("\n") : "";
         telegramIdsInput.value = telegramIdsTextarea.value;
+        apiBaseUrlInput.value = savedConfig.apiBaseUrl || "";
         telegramMessageInput.value = savedConfig.telegramMessage;
         facebookPixelIdInput.value = savedConfig.facebookPixelId;
         adminPasswordInput.value = "";
@@ -267,6 +281,7 @@
     async function loadConfig() {
       try {
         const config = await loadConfigFromLocalOrRemote();
+        apiBaseUrlInput.value = config.apiBaseUrl || "";
         const telegramIds = Array.isArray(config.telegramIds) && config.telegramIds.length
           ? config.telegramIds
           : String(
@@ -289,6 +304,20 @@
     }
 
     async function loadConfigFromLocalOrRemote() {
+      const apiBaseUrl = getConfiguredApiBaseUrl();
+
+      if (apiBaseUrl) {
+        try {
+          const remoteResponse = await fetch(buildApiUrl("/api/config", apiBaseUrl), { cache: "no-store" });
+
+          if (remoteResponse.ok) {
+            return await remoteResponse.json();
+          }
+        } catch (error) {
+          // Fall through to local/static config.
+        }
+      }
+
       try {
         const localResponse = await fetch("/api/config", { cache: "no-store" });
 
@@ -321,6 +350,24 @@
 
     function isGithubPagesHost() {
       return location.hostname.endsWith("github.io");
+    }
+
+    function getConfiguredApiBaseUrl() {
+      return normalizeApiBaseUrl(apiBaseUrlInput.value || window.SITE_CONFIG?.apiBaseUrl || "");
+    }
+
+    function normalizeApiBaseUrl(value) {
+      return String(value || "").trim().replace(/\/+$/, "");
+    }
+
+    function buildApiUrl(pathname, apiBaseUrl) {
+      const base = normalizeApiBaseUrl(apiBaseUrl);
+
+      if (!base) {
+        return pathname;
+      }
+
+      return `${base}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
     }
 
     function parseTelegramIds(rawValue) {
@@ -399,6 +446,20 @@
     }
 
     async function loadLocalOrRemoteStatus() {
+      const apiBaseUrl = getConfiguredApiBaseUrl();
+
+      if (apiBaseUrl) {
+        try {
+          const remoteResponse = await fetch(buildApiUrl("/api/deploy-status", apiBaseUrl), { cache: "no-store" });
+
+          if (remoteResponse.ok) {
+            return await remoteResponse.json();
+          }
+        } catch (error) {
+          // Fall through to local status.
+        }
+      }
+
       try {
         const localResponse = await fetch("/api/deploy-status", { cache: "no-store" });
 
